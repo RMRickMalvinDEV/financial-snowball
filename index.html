@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Financial Snowball</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+      background-color: #e0f7fa;
+    }
+    #snowball {
+      font-size: 50px;
+      margin: 20px;
+    }
+    button {
+      padding: 15px 30px;
+      font-size: 16px;
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+      margin: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Financial Snowball</h1>
+  <div id="snowball">❄️</div>
+  <p>Seus tokens: <span id="tokens">0</span> $NWBLL</p>
+  <button onclick="ganharTokens()">Ganhar Tokens</button>
+  <button onclick="subirNivel()">Subir de Nível</button>
+
+  <script>
+    // Variáveis do jogo
+    let tokens = 0;
+    let nivel = 1;
+
+    // Função para ganhar tokens
+    function ganharTokens() {
+      tokens += 1;
+      document.getElementById("tokens").innerText = tokens;
+    }
+
+    // Função para subir de nível (ainda não funciona!)
+    function subirNivel() {
+      alert("Você precisa de 100 $NWBLL para subir de nível!");
+    }
+  </script>
+</body>
+</html>
