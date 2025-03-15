@@ -8,45 +8,204 @@
       font-family: Arial, sans-serif;
       text-align: center;
       padding: 20px;
-      background-color: #e0f7fa;
+      background: #87CEEB;
+      margin: 0;
+      min-height: 100vh;
+      overflow: hidden;
+      position: relative;
     }
-    #snowball {
-      font-size: 50px;
-      margin: 20px;
+    .snowflake {
+      position: fixed;
+      width: 10px;
+      height: 10px;
+      background: white;
+      border-radius: 50%;
+      pointer-events: none;
+      animation: fall linear infinite;
+    }
+    @keyframes fall {
+      0% { transform: translateY(-10%); }
+      100% { transform: translateY(110vh); }
     }
     button {
       padding: 15px 30px;
       font-size: 16px;
-      background-color: #4CAF50;
+      background: #4CAF50;
       color: white;
       border: none;
       cursor: pointer;
       margin: 10px;
     }
+    #boostButton { background: #ff9800; }
+    #inviteButton { background: #2196F3; }
+    #adButton { background: #e91e63; }
+    #dailyButton { background: #4a148c; }
+    #musicControl {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(255, 255, 255, 0.7);
+      border: none;
+      padding: 10px 15px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    #snowball {
+      width: 120px;
+      height: 120px;
+      margin: 20px auto;
+    }
   </style>
 </head>
 <body>
+  <!-- Efeito de neve -->
+  <div class="snowflake" style="left: 5%; animation-duration: 5s;"></div>
+  <div class="snowflake" style="left: 20%; animation-duration: 7s;"></div>
+  <div class="snowflake" style="left: 40%; animation-duration: 6s;"></div>
+  <div class="snowflake" style="left: 60%; animation-duration: 8s;"></div>
+  <div class="snowflake" style="left: 80%; animation-duration: 9s;"></div>
+
+  <!-- Interface do jogo -->
   <h1>Financial Snowball</h1>
-  <div id="snowball">❄️</div>
-  <p>Seus tokens: <span id="tokens">0</span> $NWBLL</p>
+  <img id="snowball" src="https://raw.githubusercontent.com/RMRickMalvinDEV/financial-snowball/main/snowball-level-1.gif" alt="Snowball">
+  <p>Tokens: <span id="tokens">0</span> $NWBLL</p>
+  <p>Nível: <span id="nivel">1</span>/5</p>
+  <p>Livros: <span id="boostCount">0</span></p>
   <button onclick="ganharTokens()">Ganhar Tokens</button>
-  <button onclick="subirNivel()">Subir de Nível</button>
+  <button onclick="subirNivel()">Subir Nível</button>
+  <button onclick="usarBoost()" id="boostButton">Usar Livro (x2 por 24h)</button>
+  <button onclick="convidar()">🎁 Convidar Amigos</button>
+  <button onclick="assistirAnuncio()">📺 Assistir Anúncio</button>
+  <button onclick="tarefaDiaria()">📅 Tarefa Diária</button>
+  <button onclick="toggleMusic()" id="musicControl">🔇 Música</button>
+
+  <!-- Áudio de fundo -->
+  <audio id="backgroundMusic" loop>
+    <source src="https://cdn.pixabay.com/audio/2022/07/01/audio_1b0a0d4d6f.mp3" type="audio/mpeg">
+  </audio>
 
   <script>
-    // Variáveis do jogo
-    let tokens = 0;
-    let nivel = 1;
+    // Variáveis
+    let tokens = 0, nivel = 1, boostCount = 0, boostActive = false, musicPlaying = false;
+    const cooldowns = { convite: null, anuncio: null, tarefa: null };
 
-    // Função para ganhar tokens
-    function ganharTokens() {
-      tokens += 1;
+    // Carregar dados
+    function carregarDados() {
+      const saved = JSON.parse(localStorage.getItem('financial-snowball')) || {};
+      Object.assign({ tokens, nivel, boostCount, boostActive }, saved);
+      cooldowns.convite = saved.ultimoConvite ? new Date(saved.ultimoConvite) : null;
+      cooldowns.anuncio = saved.ultimoAnuncio ? new Date(saved.ultimoAnuncio) : null;
+      cooldowns.tarefa = saved.ultimaTarefa ? new Date(saved.ultimaTarefa) : null;
+      atualizarInterface();
+    }
+
+    // Salvar dados
+    function salvarDados() {
+      localStorage.setItem('financial-snowball', JSON.stringify({
+        tokens, nivel, boostCount, boostActive,
+        ultimoConvite: cooldowns.convite?.toISOString(),
+        ultimoAnuncio: cooldowns.anuncio?.toISOString(),
+        ultimaTarefa: cooldowns.tarefa?.toISOString()
+      }));
+    }
+
+    // Atualizar interface
+    function atualizarInterface() {
       document.getElementById("tokens").innerText = tokens;
+      document.getElementById("nivel").innerText = nivel;
+      document.getElementById("boostCount").innerText = boostCount;
+      atualizarVisualSnowball();
+      salvarDados();
     }
 
-    // Função para subir de nível (ainda não funciona!)
-    function subirNivel() {
-      alert("Você precisa de 100 $NWBLL para subir de nível!");
+    // Função para atualizar o visual do personagem
+    function atualizarVisualSnowball() {
+      const snowball = document.getElementById("snowball");
+      snowball.src = `https://raw.githubusercontent.com/RMRickMalvinDEV/financial-snowball/main/snowball-level-${nivel}.gif`;
     }
+
+    // Funções principais
+    function ganharTokens() {
+      tokens += boostActive ? 2 : 1;
+      atualizarInterface();
+    }
+
+    function subirNivel() {
+      if (tokens >= 100 && nivel < 5) {
+        tokens -= 100;
+        nivel++;
+        boostCount += nivel;
+        alert(`Você subiu para o nível ${nivel} e ganhou ${nivel} livros!`);
+        atualizarInterface();
+      } else {
+        alert(nivel < 5 ? "Você precisa de 100 $NWBLL!" : "Você já está no nível máximo!");
+      }
+    }
+
+    function usarBoost() {
+      if (boostCount > 0 && !boostActive) {
+        boostCount--;
+        boostActive = true;
+        document.getElementById('boostButton').disabled = true;
+        setTimeout(() => {
+          boostActive = false;
+          document.getElementById('boostButton').disabled = false;
+        }, 24 * 60 * 60 * 1000);
+        alert("Boost x2 ativado por 24 horas!");
+        atualizarInterface();
+      } else {
+        alert(boostActive ? "Boost já ativo!" : "Sem livros disponíveis!");
+      }
+    }
+
+    function convidar() {
+      if (!Telegram?.WebApp?.initData) return alert("Funcionalidade só no Telegram!");
+      const agora = new Date();
+      if (cooldowns.convite && cooldowns.convite.getDate() === agora.getDate()) return alert("Limite diário atingido!");
+      const user = Telegram.WebApp.initDataUnsafe.user;
+      navigator.clipboard.writeText(`https://rmrickmalvindev.github.io/financial-snowball/?ref=${user.id}`);
+      cooldowns.convite = agora;
+      tokens += 10;
+      alert("Link copiado! Compartilhe com amigos!");
+      atualizarInterface();
+    }
+
+    function assistirAnuncio() {
+      const agora = new Date();
+      if (cooldowns.anuncio && (agora - cooldowns.anuncio < 24 * 60 * 60 * 1000)) {
+        const tempoRestante = 24 - Math.floor((agora - cooldowns.anuncio) / 3600000);
+        return alert(`Volte em ${tempoRestante} horas.`);
+      }
+      cooldowns.anuncio = agora;
+      boostCount++;
+      alert("Você ganhou 1 livro!");
+      atualizarInterface();
+    }
+
+    function tarefaDiaria() {
+      const agora = new Date();
+      if (cooldowns.tarefa && (agora - cooldowns.tarefa < 24 * 60 * 60 * 1000)) {
+        const tempoRestante = 24 - Math.floor((agora - cooldowns.tarefa) / 3600000);
+        return alert(`Volte em ${tempoRestante} horas.`);
+      }
+      cooldowns.tarefa = agora;
+      tokens += nivel * 50;
+      boostCount += nivel >= 3 ? 1 : 0;
+      alert(`Você ganhou ${nivel * 50} tokens e ${nivel >= 3 ? 1 : 0} livro(s)!`);
+      atualizarInterface();
+    }
+
+    function toggleMusic() {
+      const audio = document.getElementById('backgroundMusic');
+      const button = document.getElementById('musicControl');
+      if (musicPlaying) audio.pause(); else audio.play();
+      button.textContent = musicPlaying ? "🔇 Música" : "🔊 Música";
+      musicPlaying = !musicPlaying;
+    }
+
+    // Inicialização
+    carregarDados();
+    document.getElementById('backgroundMusic').play().catch(() => {});
   </script>
 </body>
 </html>
